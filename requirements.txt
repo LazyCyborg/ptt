@@ -1,0 +1,13 @@
+streamlit>=1.31.0
+torch>=2.2.0
+torchaudio>=2.2.0
+transformers>=4.37.0
+pandas>=2.2.0
+textacy>=0.13.0
+numpy>=1.24.0
+spacy>=3.7.0
+soundfile>=0.12.1
+sentencepiece>=0.1.99
+protobuf>=4.25.1
+sacremoses>=0.0.53
+psutil>=5.9.0
