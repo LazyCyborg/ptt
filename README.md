@@ -14,3 +14,7 @@ Run the app:
 
 ```bash
 streamlit run app.py
+
+```
+
+To close the app just press **Ctr + C** in the command line 
