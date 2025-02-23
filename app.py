@@ -226,9 +226,18 @@ def main():
         )
 
         st.sidebar.markdown("---")
+        if 'show_splitter' not in st.session_state:
+            st.session_state.show_splitter = False
+
         if st.sidebar.button("🔪 Split Large Files"):
+            st.session_state.show_splitter = not st.session_state.show_splitter
+
+        if st.session_state.show_splitter:
             from file_splitter import split_audio_gui
             split_audio_gui()
+            if st.sidebar.button("Return to Main"):
+                st.session_state.show_splitter = False
+                st.rerun()
 
         # Advanced settings
         with st.expander("Advanced Settings"):

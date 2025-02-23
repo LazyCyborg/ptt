@@ -1,11 +1,51 @@
-#!/usr/bin/env python3
+import os
+import sys
+import tempfile
+import subprocess
+import platform
+from pathlib import Path
+import streamlit as st
+from contextlib import contextmanager
+
+
+@contextmanager
+def processing_state():
+    """Context manager to handle processing state."""
+    if 'processing' not in st.session_state:
+        st.session_state.processing = False
+    st.session_state.processing = True
+    try:
+        yield
+    finally:
+        st.session_state.processing = False
+
+
+def validate_path():
+    """Validate the input path without triggering a reload"""
+    if st.session_state.input_path_key:
+        st.session_state.input_path = st.session_state.input_path_key
+        st.session_state.path_valid = os.path.exists(st.session_state.input_path_key)
+
+
+def validate_output():
+    """Validate the output directory without triggering a reload"""
+    if st.session_state.output_dir_key:
+        st.session_state.output_dir = st.session_state.output_dir_key
+
+
+class FileSplitter:
+    def __init__(self):
+        self.max_size = 190 * 1024 * 1024  # 190MB to stay safely under 200MB limit
+
+    @staticmethod
+    def create_splitter_script(input_file: str, output_dir: str) -> str:
+        """Create the Python script for file splitting."""
+        script = f"""
 import os
 import soundfile as sf
 import math
 from pathlib import Path
 import logging
-from typing import List
-import streamlit as st
 
 logging.basicConfig(
     level=logging.INFO,
@@ -13,73 +53,52 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def split_large_file(input_file: str, output_dir: str):
+    try:
+        # Create output directory
+        os.makedirs(output_dir, exist_ok=True)
 
-class FileSplitter:
-    def __init__(self):
-        self.max_size = 190 * 1024 * 1024  # 190MB to stay safely under 200MB limit
+        # Get file info
+        info = sf.info(input_file)
+        total_frames = info.frames
+        sample_rate = info.samplerate
 
-    def split_large_file(self, input_file: str, output_dir: str) -> List[str]:
-        """
-        Split large audio file into chunks smaller than 200MB.
+        # Calculate chunks
+        max_size = 190 * 1024 * 1024  # 190MB
+        file_size = os.path.getsize(input_file)
+        bytes_per_frame = file_size / total_frames
+        frames_per_chunk = int(max_size / bytes_per_frame)
 
-        Args:
-            input_file: Path to input audio file
-            output_dir: Directory to save split files
+        # Prepare for splitting
+        base_name = Path(input_file).stem
+        chunk_count = math.ceil(total_frames / frames_per_chunk)
 
-        Returns:
-            List of paths to split files
-        """
-        try:
-            # Create output directory if it doesn't exist
-            os.makedirs(output_dir, exist_ok=True)
+        # Process chunks
+        for chunk_idx in range(chunk_count):
+            start_frame = chunk_idx * frames_per_chunk
+            end_frame = min(start_frame + frames_per_chunk, total_frames)
 
-            # Get file info
-            info = sf.info(input_file)
-            total_frames = info.frames
-            sample_rate = info.samplerate
+            # Read chunk
+            data, _ = sf.read(input_file, start=start_frame, frames=end_frame - start_frame)
 
-            # Calculate frames per chunk based on file size
-            file_size = os.path.getsize(input_file)
-            bytes_per_frame = file_size / total_frames
-            frames_per_chunk = int(self.max_size / bytes_per_frame)
+            # Save chunk
+            output_file = os.path.join(output_dir, f"{{base_name}}_part{{chunk_idx + 1:03d}}.wav")
+            sf.write(output_file, data, sample_rate)
 
-            # Prepare for splitting
-            output_files = []
-            base_name = Path(input_file).stem
+            # Log progress
+            chunk_size_mb = os.path.getsize(output_file) / (1024 * 1024)
+            print(f"Saved chunk {{chunk_idx + 1}}/{{chunk_count}}: {{output_file}} ({{chunk_size_mb:.1f}}MB)")
 
-            # Process chunks
-            chunk_count = math.ceil(total_frames / frames_per_chunk)
+    except Exception as e:
+        print(f"Error: {{str(e)}}")
+        raise
 
-            for chunk_idx in range(chunk_count):
-                # Calculate frame range for this chunk
-                start_frame = chunk_idx * frames_per_chunk
-                end_frame = min(start_frame + frames_per_chunk, total_frames)
-
-                # Read chunk
-                data, _ = sf.read(input_file,
-                                  start=start_frame,
-                                  frames=end_frame - start_frame)
-
-                # Generate output filename
-                output_file = os.path.join(
-                    output_dir,
-                    f"{base_name}_part{chunk_idx + 1:03d}.wav"
-                )
-
-                # Save chunk
-                sf.write(output_file, data, sample_rate)
-
-                chunk_size_mb = os.path.getsize(output_file) / (1024 * 1024)
-                logger.info(f"Saved chunk {chunk_idx + 1}/{chunk_count}: "
-                            f"{output_file} ({chunk_size_mb:.1f}MB)")
-
-                output_files.append(output_file)
-
-            return output_files
-
-        except Exception as e:
-            logger.error(f"Error splitting file: {e}")
-            raise
+if __name__ == "__main__":
+    input_file = "{input_file}"
+    output_dir = "{output_dir}"
+    split_large_file(input_file, output_dir)
+"""
+        return script
 
 
 def split_audio_gui():
@@ -92,60 +111,100 @@ def split_audio_gui():
     """)
 
     # Initialize session state
-    if 'input_path' not in st.session_state:
-        st.session_state.input_path = ''
-    if 'output_dir' not in st.session_state:
+    if 'initialized' not in st.session_state:
+        st.session_state.initialized = True
+        st.session_state.input_path = ""
         st.session_state.output_dir = os.path.join(os.path.expanduser("~"), "split_audio")
+        st.session_state.path_valid = False
+        st.session_state.processing = False
 
-    # File selection with session state
-    input_path = st.text_input(
+    # File path input with callback
+    st.text_input(
         "Audio File Path",
+        key="input_path_key",
         value=st.session_state.input_path,
-        help="Enter the full path to your audio file",
-        key="input_path_field"
+        on_change=validate_path
     )
-    st.session_state.input_path = input_path
 
-    # Output directory selection with session state
-    output_dir = st.text_input(
+    # Output directory input with callback
+    st.text_input(
         "Output Directory",
+        key="output_dir_key",
         value=st.session_state.output_dir,
-        help="Directory where split files will be saved",
-        key="output_dir_field"
+        on_change=validate_output
     )
-    st.session_state.output_dir = output_dir
 
-    if input_path and os.path.exists(input_path):
-        file_size_mb = os.path.getsize(input_path) / (1024 * 1024)
+    # Only show file info if path is valid
+    if hasattr(st.session_state, 'path_valid') and st.session_state.path_valid:
+        file_size_mb = os.path.getsize(st.session_state.input_path) / (1024 * 1024)
         st.info(f"Selected file size: {file_size_mb:.1f}MB")
 
         if file_size_mb <= 200:
             st.warning("This file is already under 200MB and doesn't need splitting.")
         else:
-            split_button = st.button("Split File", key="split_button")
-            if split_button:
-                try:
-                    with st.spinner("Splitting file..."):
-                        splitter = FileSplitter()
-                        output_files = splitter.split_large_file(input_path, output_dir)
+            if not st.session_state.get('processing', False):
+                if st.button("Split File", use_container_width=True):
+                    with processing_state():
+                        try:
+                            # Create the splitter script
+                            splitter_script = FileSplitter.create_splitter_script(
+                                st.session_state.input_path,
+                                st.session_state.output_dir
+                            )
 
-                        st.success(f"File successfully split into {len(output_files)} parts")
+                            # Save the script to a temporary file
+                            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp:
+                                script_fname = tmp.name
+                                tmp.write(splitter_script)
 
-                        # Display results
-                        st.subheader("Split Files:")
-                        for file in output_files:
-                            size_mb = os.path.getsize(file) / (1024 * 1024)
-                            st.text(f"{os.path.basename(file)} ({size_mb:.1f}MB)")
+                            # Launch the splitter in a separate process
+                            st.info("Starting file splitting process...")
+                            process = subprocess.Popen(
+                                [sys.executable, script_fname],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                text=True
+                            )
 
-                        st.info(
-                            "You can now upload these files individually to the "
-                            "main transcription app."
-                        )
+                            # Show progress
+                            with st.spinner("Splitting file..."):
+                                output_placeholder = st.empty()
+                                all_output = []
+                                while True:
+                                    output = process.stdout.readline()
+                                    if output:
+                                        all_output.append(output.strip())
+                                        output_placeholder.text("\n".join(all_output))
+                                    elif process.poll() is not None:
+                                        break
 
-                except Exception as e:
-                    st.error(f"Error splitting file: {str(e)}")
+                            # Check if process completed successfully
+                            if process.returncode == 0:
+                                st.success("File splitting completed successfully!")
+                                files = [f for f in os.listdir(st.session_state.output_dir)
+                                         if f.startswith(Path(st.session_state.input_path).stem)]
+                                if files:
+                                    st.subheader("Split Files:")
+                                    for file in sorted(files):
+                                        file_path = os.path.join(st.session_state.output_dir, file)
+                                        size_mb = os.path.getsize(file_path) / (1024 * 1024)
+                                        st.text(f"{file} ({size_mb:.1f}MB)")
+                            else:
+                                error = process.stderr.read()
+                                st.error(f"Error during file splitting: {error}")
 
-    elif input_path:
+                            # Cleanup
+                            try:
+                                os.remove(script_fname)
+                            except:
+                                pass
+
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
+            else:
+                st.info("Processing in progress...")
+
+    elif st.session_state.input_path:
         st.error("Selected file does not exist")
 
 
