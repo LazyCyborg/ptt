@@ -1,3 +1,11 @@
+import os
+os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
+
+import torch
+import logging
+logging.getLogger('torch.distributed.nn.jit.instantiator').setLevel(logging.ERROR)
+
+
 import streamlit as st
 import pandas as pd
 import os
