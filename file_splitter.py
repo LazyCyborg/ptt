@@ -91,18 +91,29 @@ def split_audio_gui():
     Use this before uploading to the main transcription app.
     """)
 
-    # File selection
+    # Initialize session state
+    if 'input_path' not in st.session_state:
+        st.session_state.input_path = ''
+    if 'output_dir' not in st.session_state:
+        st.session_state.output_dir = os.path.join(os.path.expanduser("~"), "split_audio")
+
+    # File selection with session state
     input_path = st.text_input(
         "Audio File Path",
-        help="Enter the full path to your audio file"
+        value=st.session_state.input_path,
+        help="Enter the full path to your audio file",
+        key="input_path_field"
     )
+    st.session_state.input_path = input_path
 
-    # Output directory selection
+    # Output directory selection with session state
     output_dir = st.text_input(
         "Output Directory",
-        value=os.path.join(os.path.expanduser("~"), "split_audio"),
-        help="Directory where split files will be saved"
+        value=st.session_state.output_dir,
+        help="Directory where split files will be saved",
+        key="output_dir_field"
     )
+    st.session_state.output_dir = output_dir
 
     if input_path and os.path.exists(input_path):
         file_size_mb = os.path.getsize(input_path) / (1024 * 1024)
@@ -111,7 +122,8 @@ def split_audio_gui():
         if file_size_mb <= 200:
             st.warning("This file is already under 200MB and doesn't need splitting.")
         else:
-            if st.button("Split File"):
+            split_button = st.button("Split File", key="split_button")
+            if split_button:
                 try:
                     with st.spinner("Splitting file..."):
                         splitter = FileSplitter()
