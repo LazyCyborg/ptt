@@ -44,3 +44,17 @@ To close the app just press **Ctr + C** in the command line in the terminal
 and just close the tab in your browser
 
 **Note that the first time one runs the app it will take some time since OpenAI's Whisper needs to be downloaded to your machine**
+
+
+#### If the file conversion does not work you might need to install ffmpeg manually in the virtual environment using:
+
+```bash
+conda install ffmpeg -c conda-forge
+
+```
+
+
+## Citing
+
+If using the app in reasearch, please cite this GitHub in your references 
+
