@@ -226,18 +226,38 @@ def main():
         )
 
         st.sidebar.markdown("---")
-        if 'show_splitter' not in st.session_state:
-            st.session_state.show_splitter = False
 
-        if st.sidebar.button("🔪 Split Large Files"):
-            st.session_state.show_splitter = not st.session_state.show_splitter
+        # Initialize session state for tool selection
+        if 'active_tool' not in st.session_state:
+            st.session_state.active_tool = None
 
-        if st.session_state.show_splitter:
+        # Tools section
+        st.sidebar.subheader("Tools")
+
+        col1, col2 = st.sidebar.columns(2)
+
+        with col1:
+            if st.button("🔪 Split Files"):
+                if st.session_state.active_tool == "splitter":
+                    st.session_state.active_tool = None
+                else:
+                    st.session_state.active_tool = "splitter"
+
+        with col2:
+            if st.button("🔄 Convert Audio"):
+                if st.session_state.active_tool == "converter":
+                    st.session_state.active_tool = None
+                else:
+                    st.session_state.active_tool = "converter"
+
+        # Show selected tool
+        if st.session_state.active_tool == "splitter":
             from file_splitter import split_audio_gui
             split_audio_gui()
-            if st.sidebar.button("Return to Main"):
-                st.session_state.show_splitter = False
-                st.rerun()
+
+        elif st.session_state.active_tool == "converter":
+            from file_converter import convert_audio_gui
+            convert_audio_gui()
 
         # Advanced settings
         with st.expander("Advanced Settings"):
