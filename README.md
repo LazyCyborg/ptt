@@ -37,7 +37,7 @@ cd ptt
 streamlit run app.py
 
 ```
-The app will open in your wwebbrowser
+The app will open in your default webbrowser
 
 ## Closing the app
 To close the app just press **Ctr + C** in the command line in the terminal
