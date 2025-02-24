@@ -23,7 +23,7 @@ Open the terminal and re-activate your environmnet
 You can se which environmnet you are in, in the terminal by looking at the prefix before your username
 
 Example:
-(transcrive) usernamee@xxx ~ % 
+(transcribe) usernamee@xxx ~ % 
 
 ```bash
 conda activate transcribe
