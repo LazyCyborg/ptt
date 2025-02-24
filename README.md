@@ -10,11 +10,16 @@ cd ptt
 pip install -r requirements.txt
 
 ```
-Run the app:
+## Run the app
+
+Open the terminal:
 
 ```bash
+cd ptt
 streamlit run app.py
 
 ```
 
 To close the app just press **Ctr + C** in the command line 
+
+**Note that the first time one runs the app it will take some time since OpenAI's Whisper needs to be downloaded to your machine**
