@@ -19,8 +19,8 @@ pip install -r requirements.txt
 
 ```
 ## Activate your virtual environment (if not already activated):
-Open the terminal and re-activate your environmnet 
-You can se which environmnet you are in, in the terminal by looking at the prefix before your username
+- Open the terminal and re-activate your environmnet 
+- You can se which environmnet you are in, in the terminal by looking at the prefix before your username
 
 Example:
 (transcribe) usernamee@xxx ~ % 
@@ -41,6 +41,6 @@ The app will open in your wwebbrowser
 
 ## Closing the app
 To close the app just press **Ctr + C** in the command line in the terminal
-Just close the tab in your browser
+and just close the tab in your browser
 
 **Note that the first time one runs the app it will take some time since OpenAI's Whisper needs to be downloaded to your machine**
