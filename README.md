@@ -23,7 +23,7 @@ pip install -r requirements.txt
 - You can se which environmnet you are in, in the terminal by looking at the prefix before your username
 
 Example:
-(transcribe) usernamee@xxx ~ % 
+(transcribe) username@xxx ~ % 
 
 ```bash
 conda activate transcribe
