@@ -22,8 +22,8 @@ pip install -r requirements.txt
 - Open the terminal and re-activate your environmnet 
 - You can se which environmnet you are in, in the terminal by looking at the prefix before your username
 
-Example:
-(transcribe) username@xxx ~ % 
+Example ("base" is the default conda environment of your system):
+(base) username@xxx ~ % 
 
 ```bash
 conda activate transcribe
